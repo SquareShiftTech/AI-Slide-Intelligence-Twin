@@ -1,0 +1,46 @@
+/**
+ * Handles GET requests (required for "Anyone" deployments since redirects convert POST → GET)
+ */
+function doGet(e) {
+  return handleRequest(e.parameter);
+}
+
+/**
+ * Handles POST requests (for authenticated callers that can POST directly)
+ */
+function doPost(e) {
+  var data = JSON.parse(e.postData.contents);
+  return handleRequest(data);
+}
+
+function handleRequest(data) {
+  try {
+    var sourceUrl = data.sourceUrl;
+    var destUrl = data.destUrl;
+    var slideIndexes = typeof data.slideIndexes === "string"
+      ? JSON.parse(data.slideIndexes)
+      : data.slideIndexes;
+
+    var sourceDeck = SlidesApp.openByUrl(sourceUrl);
+    var destDeck = SlidesApp.openByUrl(destUrl);
+    var sourceSlides = sourceDeck.getSlides();
+
+    var copiedCount = 0;
+    slideIndexes.forEach(function(index) {
+      if (index >= 0 && index < sourceSlides.length) {
+        destDeck.insertSlide(destDeck.getSlides().length, sourceSlides[index]);
+        copiedCount++;
+      }
+    });
+
+    return ContentService.createTextOutput(JSON.stringify({
+      "status": "success",
+      "message": "Successfully copied " + copiedCount + " slides."
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      "status": "error",
+      "message": error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
