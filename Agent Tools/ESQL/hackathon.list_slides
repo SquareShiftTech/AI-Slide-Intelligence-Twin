@@ -1,0 +1,13 @@
+FROM content-sqs-drive-agent
+| WHERE trashed == "false"
+  AND type == "file"
+| WHERE 
+    MATCH(semantic_body, ?user_query) 
+    OR MATCH(semantic_name, ?user_query)
+| KEEP 
+    name,
+    created_by,
+    author,
+    last_updated,
+    path,
+    url

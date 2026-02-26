@@ -1,0 +1,44 @@
+triggers:
+  - type: manual
+name: create_blank_presentation
+description: Creates a new blank Google Slides presentation and returns its ID and URL
+inputs:
+  - name: presentation_title
+    type: string
+    description: "Title for the new presentation"
+consts:
+  client_id: "<YOUR_CLIENT_ID>"
+  client_secret: "<YOUR_CLIENT_SECRET>"
+  refresh_token: "<YOUR_REFRESH_TOKEN>"
+steps:
+  - name: get_access_token
+    type: http
+    with:
+      method: POST
+      url: "https://oauth2.googleapis.com/token?client_id={{consts.client_id}}&client_secret={{consts.client_secret}}&refresh_token={{consts.refresh_token}}&grant_type=refresh_token"
+      headers:
+        Content-Type: application/x-www-form-urlencoded
+
+  - name: create_presentation
+    type: http
+    with:
+      method: POST
+      url: "https://slides.googleapis.com/v1/presentations"
+      headers:
+        Authorization: Bearer {{steps.get_access_token.output.data.access_token}}
+        Content-Type: application/json
+      body: |
+        {
+          "title": "{{inputs.presentation_title}}"
+        }
+  
+  - name: success_log
+    type: console
+    with:
+      message: >-
+        ✅ Blank presentation created.
+        Title: {{inputs.presentation_title}}
+        Presentation ID: {{steps.create_presentation.output.data.presentationId}}
+        URL: https://docs.google.com/presentation/d/{{steps.create_presentation.output.data.presentationId}}/edit
+
+enabled: true

@@ -1,0 +1,56 @@
+triggers:
+  - type: manual
+name: copy_slides_to_presentation
+description: >-
+  Copies specific slides from a source presentation into
+  an existing destination presentation. Can be called
+  multiple times with different sources to build up slides
+  in sequence.
+inputs:
+  - name: destination_presentation_id
+    type: string
+    description: "The presentation ID returned from create_blank_presentation"
+  - name: source_presentation_url
+    type: string
+    description: "Full Google Slides URL of the source presentation to copy slides from"
+  - name: slide_indexes
+    type: string
+    description: >-
+      JSON array of zero-based slide indexes to copy.
+      Example: [0, 1, 2] copies first 3 slides.
+      Example: [0, 3, 5] copies slides 1, 4 and 6.
+consts:
+  apps_script_url: "<YOUR_APPS_SCRIPT_URL>"
+steps:
+  - name: call_apps_script
+    type: http
+    with:
+      method: POST
+      url: "{{consts.apps_script_url}}"
+      headers:
+        Content-Type: application/json
+      body: |
+        {
+          "sourceUrl": "{{inputs.source_presentation_url}}",
+          "destUrl": "https://docs.google.com/presentation/d/{{inputs.destination_presentation_id}}/edit",
+          "slideIndexes": {{inputs.slide_indexes}}
+        }
+
+  - name: check_response
+    type: if
+    condition: steps.call_apps_script.output.data.status:"success"
+    steps:
+      - name: success_log
+        type: console
+        with:
+          message: >-
+            ✅ {{steps.call_apps_script.output.data.message}}
+            Slides added to:
+            https://docs.google.com/presentation/d/{{inputs.destination_presentation_id}}/edit
+    else:
+      - name: failure_log
+        type: console
+        with:
+          message: "❌ Failed to copy slides: {{steps.call_apps_script.output.data.message}}"
+
+enabled: true

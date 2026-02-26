@@ -1,0 +1,25 @@
+name: image_vector_search_workflow
+enabled: true
+description: Calls the external FastAPI image vector search endpoint and returns results to the agent
+
+triggers:
+  - type: manual
+
+inputs:
+  - name: user_query
+    type: string
+    description: The user's image search query
+
+steps:
+  - name: call_search_images_api
+    type: http
+    with:
+      method: POST
+      url: "<YOUR_SEARCH_IMAGES_API_URL>"
+      headers:
+        Content-Type: application/json
+      body: |
+        {
+          "query": "{{ inputs.user_query }}"
+        }
+

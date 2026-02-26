@@ -1,0 +1,79 @@
+triggers:
+  - type: manual
+name: manage_drive_access_with_refreh_token
+description: Grants or revokes editor access to a Google Slides file by ID
+inputs:
+  - name: file_id
+    type: string
+  - name: share_with_email
+    type: string
+  - name: action
+    type: string
+  - name: role
+    type: string
+consts:
+  client_id: "<YOUR_CLIENT_ID>"        # from OAuth 2.0 credentials
+  client_secret: "<YOUR_CLIENT_SECRET>"    # from OAuth 2.0 credentials
+  refresh_token: "<YOUR_REFRESH_TOKEN>"    
+steps:
+  - name: get_access_token
+    type: http
+    with:
+      method: POST
+      url: "https://oauth2.googleapis.com/token?client_id={{consts.client_id}}&client_secret={{consts.client_secret}}&refresh_token={{consts.refresh_token}}&grant_type=refresh_token"
+      headers:
+        Content-Type: application/x-www-form-urlencoded
+
+  - name: check_action
+    type: if
+    condition: inputs.action :"grant"
+    steps:
+      - name: grant_editor_access
+        type: http
+        with:
+          method: POST
+          url: "https://www.googleapis.com/drive/v3/files/{{inputs.file_id}}/permissions"
+          headers:
+            Authorization: Bearer {{steps.get_access_token.output.data.access_token}}
+            Content-Type: application/json
+          body: |
+            {
+              "role": "{{inputs.role}}",
+              "type": "user",
+              "emailAddress": "{{inputs.share_with_email}}"
+            }
+    else:
+      - name: list_permissions
+        type: http
+        with:
+          method: GET
+          url: "https://www.googleapis.com/drive/v3/files/{{inputs.file_id}}/permissions?fields=permissions(id,emailAddress,role)"
+          headers:
+            Authorization: Bearer {{steps.get_access_token.output.data.access_token}}
+
+      - name: read_or_delete
+        type: if
+        condition: inputs.action :"update"
+        steps:
+          - name: modify_permission
+            type: http
+            with:
+              method: PATCH
+              url: "https://www.googleapis.com/drive/v3/files/{{inputs.file_id}}/permissions/{{ steps.list_permissions.output.data.permissions | where: 'emailAddress', inputs.share_with_email | map: 'id' | first }}"
+              headers:
+                Authorization: Bearer {{steps.get_access_token.output.data.access_token}}
+                Content-Type: application/json
+              body: |
+                {
+                  "role": "{{inputs.role}}"
+                }
+        else:
+          - name: delete_permission
+            type: http
+            with:
+              method: DELETE
+              url: "https://www.googleapis.com/drive/v3/files/{{inputs.file_id}}/permissions/{{ steps.list_permissions.output.data.permissions | where: 'emailAddress', inputs.share_with_email | map: 'id' | first }}"
+              headers:
+                Authorization: Bearer {{steps.get_access_token.output.data.access_token}}
+
+enabled: true
